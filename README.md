@@ -1,4 +1,4 @@
-# lp-lab2-branch-and-cut
+# Branch-and-Cut
 
 Implementation of Branch-n-Cut algorithm for Max Clique Problem via cplex-solver
 
