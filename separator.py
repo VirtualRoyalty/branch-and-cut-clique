@@ -103,19 +103,18 @@ class IteratedLocalSearch:
 
     @staticmethod
     def get_ind_set(graph: nx.Graph, solution: list,
-                    first_k: int = 10, abs_tol=1e-3, **kwargs) -> list:
+                    first_k: int = 10, **kwargs) -> list:
         coloring_dct = nx.coloring.greedy_color(graph, strategy=nx.coloring.strategy_random_sequential)
-        n_colors = len(set(coloring_dct.values()))
         independent_sets = list()
         for index in range(1, first_k):
-            random_color = np.random.randint(0, n_colors)
+            random_color = coloring_dct[np.random.randint(0, len(solution))]
             ind_set = set()
             set_weight = 0
             for _node, color in coloring_dct.items():
-                if color == random_color:  # coloring_dct[random_index]:
+                if color == random_color:
                     ind_set.add(_node)
                     set_weight += solution[_node]
-            if len(ind_set) > 2:  # and set_weight > (1 + abs_tol):
+            if len(ind_set) > 2:
                 independent_sets.append((ind_set, set_weight))
         independent_sets = sorted(independent_sets, key=lambda item: (item[1], len(item[0])), reverse=True)
         return independent_sets[:first_k]

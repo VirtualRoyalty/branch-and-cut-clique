@@ -78,7 +78,7 @@ class BranchAndCut:
             if len(obj_value_history) > 0:
                 if isclose(obj_value_history[-1], current_obj_value, abs_tol=1e-2):
                     break
-                if (obj_value_history[-1] - current_obj_value) < 0.1:
+                if (obj_value_history[-1] - current_obj_value) < 0.15:
                     not_improve_criteria += 1
                 else:
                     not_improve_criteria = 0
