@@ -1,5 +1,4 @@
 import cplex
-import numpy as np
 import networkx as nx
 
 from utils import NotDefinedException
@@ -62,24 +61,24 @@ class ProblemHandler:
         else:
             raise NotDefinedException
 
-    def distill_constraints(self, threshold: float = 0):
+    def distill_constraints(self, threshold: float = 1e-3):
         if self.problem:
             slacks = self.problem.solution.get_linear_slacks()
             constraint_names = self.problem.linear_constraints.get_names()
             for i, slack in enumerate(slacks):
                 if slack > threshold:
                     name = constraint_names[i]
-                    if 'Branch' not in name and 'Weak' not in name:
+                    if 'Branch' not in name:
                         self.remove_constraint(name)
             return
         else:
             raise NotDefinedException
 
-    def design_problem(self, first_k_constraints: int = 500, n_iter: int = 100):
+    def design_problem(self, accepted_sets_ratio: float = 0.4, n_iter: int = 150):
         # specify numeric type for ILP/LP problem
         one = 1 if self.is_integer else 1.0
         zero = 0 if self.is_integer else 0.0
-        independent_sets = self.get_independent_sets(self.graph, first_k=first_k_constraints,
+        independent_sets = self.get_independent_sets(self.graph, accepted_ratio=accepted_sets_ratio,
                                                      n_iter=n_iter, strategies=self.STRATEGIES)
         print(f'IND SETS: {len(independent_sets)}')
         nodes = sorted(self.graph.nodes())
@@ -117,15 +116,12 @@ class ProblemHandler:
     @staticmethod
     def get_complement_edges(graph: nx.Graph) -> list:
         complement_g = nx.complement(graph)
-        # adj_matrix = nx.adjacency_matrix(complement_g).todense()
-        # adj_matrix = np.triu(adj_matrix, k=1)
-        # pairs = np.where(adj_matrix == 1)
-        # complement_edges = list(zip(pairs[0] + 1, pairs[1] + 1))
         return list(filter(lambda pair: pair[0] != pair[1], complement_g.edges()))
 
     @staticmethod
-    def get_independent_sets(graph: nx.Graph, strategies: list, first_k: int = 25,
-                             n_iter: int = 35, min_set_size: int = 3) -> list:
+    def get_independent_sets(graph: nx.Graph, strategies: list, n_iter: int = 35,
+                             accepted_ratio: float = 0.35, min_set_size: int = 3,
+                             **kwargs) -> list:
         independent_sets = set()
         for strategy in strategies:
             if strategy == nx.coloring.strategy_random_sequential:
@@ -146,4 +142,5 @@ class ProblemHandler:
         # store in each ind_set in set() for faster pair constraint filtering
         independent_sets = [set(ind_set) for ind_set in independent_sets]
         independent_sets = sorted(independent_sets, key=lambda _set: len(_set), reverse=True)
+        first_k = int(len(independent_sets) * accepted_ratio)
         return independent_sets[:first_k]
