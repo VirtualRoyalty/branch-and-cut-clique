@@ -31,7 +31,7 @@ python run_test.py
 | 19 | keller4.clq        | 3min 53.6sec            |                  233.59 |                11 |                 11 |
 | 20 | MANN_a27.clq       | 5min 0.9sec             |                  300.9  |               126 |                126 |
 | 21 | gen200_p0.9_55.clq | 0min 3.1sec             |                    3.11 |                55 |                 55 |
-| 22 | gen200_p0.9_44.clq | TIMEOUT: >3600s elapsed |                  nan    |                39 |                 44 |
+| 22 | gen200_p0.9_44.clq | TIMEOUT: >3600s elapsed |                  nan    |                40 |                 44 |
 | 23 | C125.9.clq         | 32min 20.9sec           |                 1940.85 |                34 |                 34 |
 | 24 | brock200_2.clq     | 10min 50.7sec           |                  650.74 |                12 |                 12 |
 | 25 | brock200_3.clq     | 31min 54.1sec           |                 1914.09 |                15 |                 15 |
