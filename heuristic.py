@@ -24,9 +24,6 @@ class HeuristicMaxClique:
                 if best_clique_size < len(found_clique):
                     best_clique_size = len(found_clique)
                     best_clique = found_clique
-        # return result in a form [0, 1, 0..., 0]
-        # return [1.0 if i + 1 in best_clique else 0.0
-        #         for i in range(self.graph.number_of_nodes())]
         return [1.0 if i in best_clique else 0.0
                 for i in range(self.graph.number_of_nodes())]
 

@@ -4,22 +4,42 @@ import numpy as np
 import networkx as nx
 from tqdm import tqdm
 
+import utils
+
 
 def simple_separation(graph: nx.Graph, solution: list,
-                      n_iter: int = 20, first_k: int = 10) -> list:
+                      first_k: int = 10, abs_tol=1e-3, **kwargs) -> list:
+    coloring_dct = nx.coloring.greedy_color(graph, strategy=nx.coloring.strategy_random_sequential)
+    independent_sets = list()
+    for index in range(1, first_k):
+        random_index = np.random.randint(0, len(solution))
+        ind_set = set()
+        set_weight = 0
+        for _node, color in coloring_dct.items():
+            if color == coloring_dct[random_index]:
+                ind_set.add(_node)
+                set_weight += solution[_node]
+        if len(ind_set) > 2:  # and set_weight > (1 + abs_tol):
+            independent_sets.append((ind_set, set_weight))
+    independent_sets = sorted(independent_sets, key=lambda item: (item[1], len(item[0])), reverse=True)
+    return independent_sets[:first_k]  # random.sample(independent_sets, k=min(len(independent_sets), first_k))
+
+
+def greedy_separation(graph: nx.Graph, solution: list,
+                      n_iter: int = 20, first_k: int = 10, abs_tol=1e-3) -> list:
     solution_indexes = np.argsort(solution)
     independent_sets = list()
     for _ in range(n_iter):
         coloring_dct = nx.coloring.greedy_color(graph, strategy=nx.coloring.strategy_random_sequential)
-        for i in range(1, 10):
-            max_w_index = solution_indexes[-i]
+        for index in range(1, min(first_k, len(solution_indexes) - 1)):
+            max_w_index = solution_indexes[-index]
             ind_set = set()
             set_weight = 0
-            for node, color in coloring_dct.items():
+            for _node, color in coloring_dct.items():
                 if color == coloring_dct[max_w_index]:
-                    ind_set.add(node)
-                    set_weight += solution[node]
-            if len(ind_set) > 2 and set_weight > 1:
+                    ind_set.add(_node)
+                    set_weight += solution[_node]
+            if len(ind_set) > 2 and set_weight > (1 + abs_tol):
                 independent_sets.append((ind_set, set_weight))
     independent_sets = sorted(independent_sets, key=lambda item: (item[1], len(item[0])), reverse=True)
     return independent_sets[:first_k]
@@ -50,7 +70,7 @@ class LocalSearch:
         new_others_set = new_others_set.union(others_set - set([node_to_add]))
         return new_sol_set, new_others_set, new_set_weight
 
-    def add_free_nodes(self, sol_set: set, others_set: set, set_weight: float, sample_size=100):
+    def add_free_nodes(self, sol_set: set, others_set: set, set_weight: float, sample_size=200):
         candidates = random.sample(others_set, k=min(sample_size, len(others_set)))
         for candidate in set(candidates):
             flag = True
@@ -96,7 +116,6 @@ class IteratedLocalSearch:
         self.init_sol_set = sol_set.copy()
         self.init_others_set = others_set.copy()
         self.init_set_weight = weight
-        # print(f'SOL LEN {len(sol_set)} OTHERS LEN {len(others_set)} WEIGHT {weight}')
         self.searcher = LocalSearch(graph, weights)
         return
 
@@ -105,41 +124,42 @@ class IteratedLocalSearch:
         self.best_others_set = self.init_others_set
         self.best_set_weight = self.init_set_weight
 
-    def init_solution_sets(self, solution: np.ndarray):
+    def init_solution_sets(self, initial_solution: set):
         solution_weight = 0
-        sol = set()
+        sol = initial_solution.copy()
         others = set()
-        for node, val in enumerate(solution):
-            if val == 1:
-                sol.add(node)
-                solution_weight += self.weights[node]
-            else:
+        for node in self.graph.nodes():
+            if node not in sol:
                 others.add(node)
+            else:
+                solution_weight += self.weights[node]
         return sol, others, solution_weight
+
+    @utils.timer
+    def timed_run(self, *args, **kwargs):
+        self.run(*args, **kwargs)
+        return
 
     def run(self, n_iter: int = 50, verbose=False):
         local_sol, local_others, local_weight = self.searcher.run(self.best_sol_set,
                                                                   self.best_others_set,
                                                                   self.best_set_weight)
-        improvement = 1
+        improvement = 5
         for itr in tqdm(range(n_iter), disable=not verbose):
-            # perturb current solution
-            # print(f'******ITER{itr}*****')
             sol, others, weight = self.searcher.random_insert(local_sol, local_others)
-            # if weight != sum(self.weights[s] for s in sol):
-            #     print(f'\t PERTURB weight{weight} real weight {sum(self.weights[s] for s in sol)}')
-            # apply local search
             sol, others, weight = self.searcher.run(sol, others, weight)
-            # if weight != sum(self.weights[s] for s in sol):
-            #     print(f'\t RUN weight{weight} real weight {sum(self.weights[s] for s in sol)}')
 
             if self.best_set_weight < weight:
-                # print('Found best:', weight, 'previous:', self.best_set_weight)
                 self.best_sol_set = sol
                 self.best_others_set = others
                 self.best_set_weight = weight
-                self.local_sol = sol
-                self.local_others = others
+                local_sol = sol
+                local_others = others
+            else:
+                improvement -= 1
+            if improvement < 0:
+                local_sol = sol
+                local_others = others
         if not math.isclose(self.best_set_weight,
                             sum(self.weights[s] for s in self.best_sol_set), abs_tol=1e3):
             raise "WEIHTS NOT EQUAL"
@@ -204,30 +224,26 @@ class FastLocalSearch:
 if __name__ == '__main__':
     from utils import read_graph_file
 
-    G = read_graph_file('benchmarks/DIMACS_all_ascii/keller4.clq')
-    print('NODES', sorted(G.nodes()))
+    G = read_graph_file('benchmarks/DIMACS_all_ascii/keller4.clq', verbose=False)
+
     from problem import ProblemHandler
 
     ph = ProblemHandler(G)
-    # ph.design_problem(first_k_constraints=150, n_iter=50)
-    ph.design_problem()
+    ph.design_problem(accepted_sets_ratio=0.15)
     ph.solve_problem()
-    sol = ph.get_solution()
-    ind_sets = simple_separation(ph.graph, sol)
-    print('WEIGHTS:', sol)
-    print('Simple separator:\n', *ind_sets[:10], sep='\n')
-    # start_solution = set(map(lambda x: x-1, ind_sets[0][0]))
+    solution = ph.get_solution()
+    ind_sets = simple_separation(ph.graph, solution, n_iter=1, first_k=20)
+    print('Simple separator:', *ind_sets[:10], sep='\n')
     sub = G.subgraph(ind_sets[0][0])
-    print(sub.edges())
-    start_solution = np.zeros(G.number_of_nodes(), dtype=bool)
-    for node in ind_sets[0][0]:
-        start_solution[node] = 1
-    # print('START SOLUTION', start_solution)
-    ils = IteratedLocalSearch(G, start_solution, weights=sol)
-    for i in range(2):
-        ils.run(n_iter=250, verbose=True)
-        print('Sol weights:', sum([sol[x] for x in ils.best_sol_set]))
-        print('RESULT', ils.best_sol_set, ils.best_set_weight)
+    print('\tCheck:', True if sub.number_of_edges() == 0 else False, '\n')
+
+    ils = IteratedLocalSearch(G, ind_sets[0][0], weights=solution)
+    for i in range(5):
+        exec_time = ils.timed_run(n_iter=200, verbose=False)
+        _minutes, _seconds = divmod(exec_time, 60)
+        print('Solution weights:', sum([solution[x] for x in ils.best_sol_set]))
+        print('RESULT', ils.best_sol_set, 'SET WEIGHT', ils.best_set_weight)
+        print(f'ILS exec time: {_minutes:.0f}min {_seconds:.1f}sec')
         sub = G.subgraph(ils.best_sol_set)
-        print(sub.edges())
+        print('\tCheck:', True if sub.number_of_edges() == 0 else False)
         ils.reset()
