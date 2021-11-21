@@ -32,7 +32,7 @@ def run_test(benchmark: str, abs_tol: float = 1e-4, time_limit: int = None):
                    bnb_exec_time=f'{_minutes:.0f}min {_seconds:.1f}sec',
                    bnb_exec_time_seconds=exec_time,
                    bnb_call_count=bnb_algorithm.call_counter,
-                   bnb_max_recursion_depth=bnb_algorithm.max_recursion_depth,
+                   bnb_max_recursion_depth=None,
                    )
     return _result
 
@@ -60,4 +60,4 @@ def run_tests(benchmarks: list, time_limit: int = None, abs_tol: float = 1e-4,
 
 if __name__ == '__main__':
     benchmarks = dict(**EASY, **MEDIUM)
-    run_tests(benchmarks=benchmarks, time_limit=3600, suffix='_test_cut', abs_tol=1e-4)
+    run_tests(benchmarks=benchmarks, time_limit=3600, suffix='_improvments_cut', abs_tol=1e-4)
