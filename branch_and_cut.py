@@ -5,7 +5,7 @@ from math import isclose
 
 import utils
 from problem import ProblemHandler
-from separator import simple_separation, IteratedLocalSearch
+from separator import greedy_separation, IteratedLocalSearch
 
 
 class BranchAndCut:
@@ -13,8 +13,6 @@ class BranchAndCut:
     def __init__(self, problem: ProblemHandler, initial_obj_value: float, initial_solution: list,
                  abs_tol: float = 1e-4, time_limit: int = None):
         self.call_counter = 0
-        self.recursion_depth = 0
-        self.max_recursion_depth = 0
         self.problem = problem
         self.best_obj_value = initial_obj_value
         self.best_solution = initial_solution
@@ -34,6 +32,7 @@ class BranchAndCut:
         return
 
     def run(self):
+        # timeout stop
         if self.time_limit:
             elapsed_time = time.perf_counter() - self.start_time
             if elapsed_time > self.time_limit:
@@ -41,106 +40,80 @@ class BranchAndCut:
                                              msg=f'TIMEOUT: >{round(elapsed_time)}s elapsed')
         self.call_counter += 1
         current_obj_value = self.problem.solve_problem()
-        # print('CURRENT_OBJ_VALUE', current_obj_value)
         if current_obj_value is None:
             return
-        current_solution = self.problem.get_solution()
-
-        if self.call_counter % 40 == 0:
-            print('CONSTR NUM:', self.problem.problem.linear_constraints.get_num())
-            self.problem.distill_constraints()
-            print('*after distill* CONSTR NUM:', self.problem.problem.linear_constraints.get_num())
-
         if int(current_obj_value + self.abs_tol) <= self.best_obj_value:
             return
-        obj_value_history = list()
+        current_solution = self.problem.get_solution()
+        if self.call_counter % 100 == 0:
+            elapsed_time = time.perf_counter() - self.start_time
+            _minutes, _seconds = divmod(elapsed_time, 60)
+            print(f'{_minutes:.0f}min {_seconds:.1f}sec ({round(elapsed_time, 1)})')
+            self.problem.distill_constraints()
+
         not_improve_criteria = 0
+        obj_value_history = list()
         for sep_iter in range(self.max_sep_iter):
-            obj_value_history.append(current_obj_value)
-            violated_constraints = simple_separation(self.problem.graph, current_solution,
-                                                     n_iter=25, first_k=7)
+            violated_constraints = IteratedLocalSearch.get_ind_set(self.problem.graph, current_solution, first_k=15)
+            # violated_constraints = greedy_separation(self.problem.graph, current_solution, first_k=20)
             if len(violated_constraints) == 0:
-                # obj_value_history.append('NO_CONSTRAINTS')
                 break
-            start_solution = np.zeros(self.num_of_nodes, dtype=bool)
-            for node in violated_constraints[0][0]:
-                start_solution[node] = 1
-            # ils = IteratedLocalSearch(self.problem.graph, start_solution, weights=current_solution)
-            # for _ in range(1):
-            #     ils.run(n_iter=300, verbose=False)
-            #     violated_constraints.append((ils.best_sol_set, ils.best_set_weight))
-            #     ils.reset()
+            ils = IteratedLocalSearch(self.problem.graph, violated_constraints[0][0], weights=current_solution)
+            ils.run(n_iter=100, verbose=False)
+            violated_constraints.append((ils.best_sol_set, ils.best_set_weight))
+            added_flag = False
             for itr, max_weigh_constraint in enumerate(violated_constraints):
                 constraint, weight = max_weigh_constraint
-                self.problem.add_constraint(var_names=[f'x{i}' for i in constraint], sense='L',
-                                            constraint_name=f'Strong{sep_iter}_{itr}')
-            previous_obj_value = current_obj_value
+                if weight > (1.0 + self.abs_tol):
+                    added_flag = True
+                    self.problem.add_constraint(var_names=[f'x{i}' for i in constraint], sense='L',
+                                                constraint_name=f'Strong{sep_iter}_{itr}')
+            if not added_flag:
+                break
             current_obj_value = self.problem.solve_problem()
             if current_obj_value is None:
                 return
             if int(current_obj_value + self.abs_tol) <= self.best_obj_value:
                 return
-            if isclose(previous_obj_value, current_obj_value, abs_tol=1e-2):
-                break
-            if (previous_obj_value - current_obj_value) < 0.5:
-                not_improve_criteria += 1
-            else:
-                not_improve_criteria = 0
-            if not_improve_criteria > 3:
-                # obj_value_history.append('NOT_IMPROVE')
-                break
+            if len(obj_value_history) > 0:
+                if isclose(obj_value_history[-1], current_obj_value, abs_tol=1e-2):
+                    break
+                if (obj_value_history[-1] - current_obj_value) < 0.1:
+                    not_improve_criteria += 1
+                else:
+                    not_improve_criteria = 0
+                if not_improve_criteria > 10:
+                    break
+            obj_value_history.append(current_obj_value)
             current_solution = self.problem.get_solution()
-            # if len(obj_value_history) > 5:
-            #     if np.mean(obj_value_history[-5:-1]) < obj_value_history[-1] + 0.01:
-            #         obj_value_history.append('NOT_IMPROVE')
-            #         break
-
-        if self.call_counter % 50 == 0 or self.call_counter <= 1:
-            print('OBJ_HISTORY:', np.around(obj_value_history, 2))
-            print('CURRENT SOLUTION', np.around(current_solution, 2))
 
         branching_var_index = self.select_branching_var(current_solution)
         if branching_var_index == -1:
-            # print('~~~~N0 BRANCHING VAR~~~~')
             weak_constraints = self.check_solution(current_solution)
             if weak_constraints != -1:
-                print('----' * 5 + 'WEAK CONSTRAINTS:', len(weak_constraints))
-                print('~~~~~~~~~~~~~~~~~', weak_constraints[:5])
-                # print('WEAK CONSTRAINTS:', weak_constraints)
                 for itr, pair in enumerate(weak_constraints):
                     var_names = [f'x{i}' for i in pair]
-                    # print(var_names)
-                    # print('VIOLATED VARS:', current_solution[pair[0]-1], current_solution[pair[1]-1])
                     self.problem.add_constraint(var_names=var_names, sense='L',
                                                 constraint_name=f'Weak{self.call_counter}_{itr}')
-                # print('CONSTR NUM:', self.problem.problem.linear_constraints.get_num())
-                # print(self.problem.problem.linear_constraints.get_rows()[-5:])
-                # print(self.problem.problem.linear_constraints.get_rhs()[-5:])
-                # print(self.problem.problem.linear_constraints.get_histogram())
                 self.run()
             else:
-                print(f'******************Found new best: {current_obj_value}**************************')
+                print(f'\t\t\tFound new best: {current_obj_value}')
                 self.best_solution = current_solution
                 self.best_obj_value = round(current_obj_value)
                 return
         else:
-            # branching_var_name = f'x{branching_var_index + 1}'
             branching_var_name = f'x{branching_var_index}'
             rounded_value = round(current_solution[branching_var_index])
-            # print(f'Branching {branching_var_name} to {rounded_value} ... call{self.call_counter}')
-            for branch_value in [1, 0]:  # [rounded_value, 1 - round(rounded_value)]:
+            for branch_value in [rounded_value, 1 - round(rounded_value)]:
                 constraint_name = f'Branch{self.call_counter}_{branch_value}_{branching_var_name}'
                 self.problem.add_constraint(var_names=[branching_var_name], sense='E',
                                             constraint_name=constraint_name, rhs=branch_value)
-                self.constrained_vars[branching_var_index] = 1
+                self.constrained_vars[branching_var_index] = True
                 self.constraint_size += 1
-                self.recursion_depth += 1
-                self.max_recursion_depth = max(self.recursion_depth, self.max_recursion_depth)
                 self.run()
                 self.problem.remove_constraint(constraint_name)
-                self.constrained_vars[branching_var_index] = 0
+                self.constrained_vars[branching_var_index] = False
                 self.constraint_size -= 1
-                self.recursion_depth -= 1
         return
 
     def check_solution(self, solution: list) -> list:
