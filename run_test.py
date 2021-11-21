@@ -59,8 +59,5 @@ def run_tests(benchmarks: list, time_limit: int = None, abs_tol: float = 1e-4,
 
 
 if __name__ == '__main__':
-    # benchmarks = dict(**EASY,
-    #                   **MEDIUM)
     benchmarks = dict(**EASY, **MEDIUM)
     run_tests(benchmarks=benchmarks, time_limit=3600, suffix='_test_cut', abs_tol=1e-4)
-    # run_test('')
