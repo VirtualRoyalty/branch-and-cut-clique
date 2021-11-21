@@ -3,7 +3,7 @@ from pprint import pprint
 
 from problem import ProblemHandler
 from heuristic import HeuristicMaxClique
-from branch_and_bound import BranchAndBound
+# from branch_and_bound import BranchAndBound
 from branch_and_cut import BranchAndCut
 from benchmarks import EASY, MEDIUM, HARD, REST
 from utils import *
