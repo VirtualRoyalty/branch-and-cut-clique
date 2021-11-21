@@ -1,0 +1,28 @@
+,benchmark,heuristic_clique_size,bnb_clique_size,is_bnb_solution_clique,bnb_exec_time,bnb_exec_time_seconds,bnb_call_count,bnb_max_recursion_depth,true_clique_size
+0,johnson8-2-4.clq,4,4,True,0min 0.0sec,0.018602999999999925,1,,4
+1,johnson8-4-4.clq,14,14,True,0min 0.0sec,0.0168307999999997,1,,14
+2,johnson16-2-4.clq,8,8,True,0min 0.0sec,0.016161900000000173,1,,8
+3,MANN_a9.clq,16,16,True,0min 0.8sec,0.8189143999999997,16,,16
+4,c-fat200-1.clq,12,12,True,0min 0.1sec,0.09660010000000074,1,,12
+5,c-fat200-2.clq,24,24,True,0min 0.0sec,0.040155000000000385,1,,24
+6,c-fat200-5.clq,58,58,True,0min 7.4sec,7.376817000000003,49,,58
+7,c-fat500-1.clq,14,14,True,0min 0.4sec,0.4260027999999991,1,,14
+8,c-fat500-2.clq,26,26,True,0min 1.9sec,1.8753596000000101,1,,26
+9,c-fat500-5.clq,64,64,True,0min 1.0sec,0.9593020000000081,1,,64
+10,c-fat500-10.clq,126,126,True,0min 0.3sec,0.2637067000000002,1,,126
+11,hamming6-2.clq,32,32,True,0min 0.0sec,0.029361699999981283,2,,32
+12,hamming6-4.clq,4,4,True,0min 1.6sec,1.5872511000000031,29,,4
+13,hamming8-2.clq,128,128,True,0min 0.2sec,0.24362329999999588,2,,128
+14,hamming8-4.clq,16,16,True,0min 0.2sec,0.15297309999999698,1,,16
+15,san200_0.7_1.clq,17,30,True,0min 0.1sec,0.09860989999998537,1,,30
+16,san200_0.7_2.clq,14,18,True,4min 1.2sec,241.15218670000002,1072,,18
+17,san200_0.9_1.clq,47,70,True,0min 1.0sec,1.020341599999938,5,,70
+18,san200_0.9_2.clq,40,60,True,0min 4.1sec,4.0676584000000275,13,,60
+19,keller4.clq,11,11,True,3min 53.6sec,233.5935128,7172,,11
+20,MANN_a27.clq,123,126,True,5min 0.9sec,300.8973017,8163,,126
+20,gen200_p0.9_55.clq,38,55,True,0min 3.1sec,3.1133170000000003,13,6,55
+21,gen200_p0.9_44.clq,,40,,TIMEOUT: >3600s elapsed,,,,44
+22,C125.9.clq,33,34,True,32min 20.9sec,1940.8535011999998,155707,34,34.0
+23,brock200_2.clq,9,12,True,10min 50.7sec,650.7403944000002,6590,132,12.0
+24,brock200_3.clq,13,15,True,31min 54.1sec,1914.0886882999998,20946,117,15.0
+25,brock200_4.clq,,17,,TIMEOUT: >3601s elapsed,,,,17
